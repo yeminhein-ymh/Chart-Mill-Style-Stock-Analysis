@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import textwrap
 from typing import Iterable
 
 import numpy as np
@@ -27,8 +28,12 @@ WATCHLIST = ["SPY", "QQQ", "IWM", "NVDA", "AMZN", "MU", "PLTR", "GOOGL", "AMD", 
 POPULAR = ["NVDA", "AMZN", "MU", "PLTR", "GOOGL", "AMD", "SPY", "AVGO", "QQQ", "GOOG", "TSLA", "TSM", "AAPL"]
 
 
+def cm_html(markup: str, container=st) -> None:
+    container.html(textwrap.dedent(markup).strip())
+
+
 def inject_css() -> None:
-    st.markdown(
+    cm_html(
         """
         <style>
         :root {
@@ -621,8 +626,7 @@ def inject_css() -> None:
             }
         }
         </style>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -635,7 +639,7 @@ def icon_svg(name: str) -> str:
 
 
 def render_sidebar() -> None:
-    st.sidebar.markdown(
+    cm_html(
         f"""
         <div class="cm-side-logo">
             <div class="cm-logo-mark">CM</div>
@@ -670,7 +674,7 @@ def render_sidebar() -> None:
         <a class="cm-side-small" href="#plans">Subscription</a>
         <a class="cm-side-small" href="#learn">Swing Trading Course</a>
         """,
-        unsafe_allow_html=True,
+        container=st.sidebar,
     )
     st.sidebar.selectbox("Universe", ["US Market", "Nasdaq", "NYSE", "AMEX", "ETF"], index=0, label_visibility="collapsed")
     st.sidebar.multiselect("Tickers", WATCHLIST, default=["SPY", "QQQ", "NVDA", "AMZN"], label_visibility="collapsed")
@@ -797,7 +801,7 @@ def market_table_html(title: str, data: pd.DataFrame) -> str:
 
 
 def render_topbar() -> None:
-    st.markdown(
+    cm_html(
         """
         <span id="home"></span>
         <div class="cm-topbar">
@@ -808,8 +812,7 @@ def render_topbar() -> None:
                 <span class="cm-btn">Alerts</span>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -833,7 +836,7 @@ def render_market_strip(latest: pd.DataFrame) -> None:
             """
         )
     popular_links = "".join(f"<span>{symbol}</span>" for symbol in POPULAR)
-    st.markdown(
+    cm_html(
         f"""
         <div class="cm-market-strip">
             <div class="cm-index-grid">{''.join(cards)}</div>
@@ -842,8 +845,7 @@ def render_market_strip(latest: pd.DataFrame) -> None:
                 <div class="cm-popular"><strong>Popular:</strong> {popular_links}</div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -866,8 +868,8 @@ def render_market_today(latest: pd.DataFrame) -> None:
         """
         for label, value in values
     )
-    st.markdown('<span id="market-monitor"></span><div class="cm-section-title"><span class="cm-title-icon">▦</span>Market Today</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="cm-breadth">{items}</div>', unsafe_allow_html=True)
+    cm_html('<span id="market-monitor"></span><div class="cm-section-title"><span class="cm-title-icon">▦</span>Market Today</div>')
+    cm_html(f'<div class="cm-breadth">{items}</div>')
 
 
 def render_movers(market_rows: pd.DataFrame) -> None:
@@ -885,8 +887,8 @@ def render_movers(market_rows: pd.DataFrame) -> None:
         market_table_html("Gap Up Stocks", gap_up),
         market_table_html("Most Active", active),
     ]
-    st.markdown(f'<div class="cm-grid-3">{"".join(widgets)}</div>', unsafe_allow_html=True)
-    st.markdown('<div class="cm-linkbar"><a class="cm-blue-link" href="#market-monitor">TO MARKET MONITOR</a></div>', unsafe_allow_html=True)
+    cm_html(f'<div class="cm-grid-3">{"".join(widgets)}</div>')
+    cm_html('<div class="cm-linkbar"><a class="cm-blue-link" href="#market-monitor">TO MARKET MONITOR</a></div>')
 
 
 def chart_for_symbol(prices: pd.DataFrame, symbol: str) -> go.Figure:
@@ -909,15 +911,15 @@ def chart_for_symbol(prices: pd.DataFrame, symbol: str) -> go.Figure:
 
 
 def render_news() -> None:
-    st.markdown('<span id="market-news"></span><div class="cm-section-title"><span class="cm-title-icon">▣</span>Market Monitor</div>', unsafe_allow_html=True)
+    cm_html('<span id="market-news"></span><div class="cm-section-title"><span class="cm-title-icon">▣</span>Market Monitor</div>')
     market_monitor = [
         ("21 hours ago - By: ChartMill - Mentions: IWM QQQ SPY", "Breadth Cools at the Highs, But the Uptrend Stays Intact"),
         ("a day ago - By: ChartMill - Mentions: CVX COP XOM JPM", "Oil Threats Lift Energy While Wall Street Keeps Watching Breadth"),
     ]
     for meta, title in market_monitor:
-        st.markdown(news_card(meta, title), unsafe_allow_html=True)
+        cm_html(news_card(meta, title))
 
-    st.markdown('<span id="news"></span><div class="cm-section-title"><span class="cm-title-icon">▤</span>Market News</div>', unsafe_allow_html=True)
+    cm_html('<span id="news"></span><div class="cm-section-title"><span class="cm-title-icon">▤</span>Market News</div>')
     news_items = [
         ("38 minutes ago - By: Bloomberg - Mentions: F", "Why This $170,000 F.P. Journe Is the Watch of the Century"),
         ("39 minutes ago - By: Bloomberg", "India's Russia Oil Trade May Dip Again, Stranding Cargoes at Sea"),
@@ -926,8 +928,8 @@ def render_news() -> None:
         ("8 hours ago - By: ChartMill - Mentions: FUL", "H.B. Fuller Reports Strong Profit Growth Despite Revenue Miss"),
     ]
     for meta, title in news_items:
-        st.markdown(news_card(meta, title), unsafe_allow_html=True)
-    st.markdown('<div class="cm-linkbar"><a class="cm-blue-link" href="#news">ALL NEWS</a></div>', unsafe_allow_html=True)
+        cm_html(news_card(meta, title))
+    cm_html('<div class="cm-linkbar"><a class="cm-blue-link" href="#news">ALL NEWS</a></div>')
 
 
 def news_card(meta: str, title: str) -> str:
@@ -961,7 +963,7 @@ def render_ideas() -> None:
         """
         for title in ideas
     )
-    st.markdown(
+    cm_html(
         f"""
         <span id="trading-ideas"></span>
         <div class="cm-section-title"><span class="cm-title-icon">▧</span>Discover: ChartMill Trading and Investment Ideas</div>
@@ -978,13 +980,12 @@ def render_ideas() -> None:
             <div class="cm-idea-grid">{cards}</div>
             <div class="cm-linkbar" style="margin-bottom:0;"><a class="cm-blue-link">Explore Trading Ideas</a></div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 def render_screener(market_rows: pd.DataFrame) -> None:
-    st.markdown('<span id="stock-screener"></span><div class="cm-section-title"><span class="cm-title-icon">⌕</span>Stock Screener</div>', unsafe_allow_html=True)
+    cm_html('<span id="stock-screener"></span><div class="cm-section-title"><span class="cm-title-icon">⌕</span>Stock Screener</div>')
     min_change, max_change = st.slider("% change range", -75.0, 450.0, (-10.0, 100.0), 5.0)
     screened = market_rows[(market_rows["% Chg"] >= min_change) & (market_rows["% Chg"] <= max_change)].sort_values("% Chg", ascending=False)
     st.dataframe(
@@ -996,10 +997,10 @@ def render_screener(market_rows: pd.DataFrame) -> None:
 
 
 def render_secondary_tools(prices: pd.DataFrame, market_rows: pd.DataFrame, selected_symbol: str) -> None:
-    st.markdown('<span id="stock-charts"></span><div class="cm-section-title"><span class="cm-title-icon">⌁</span>Stock Charts</div>', unsafe_allow_html=True)
+    cm_html('<span id="stock-charts"></span><div class="cm-section-title"><span class="cm-title-icon">⌁</span>Stock Charts</div>')
     st.plotly_chart(chart_for_symbol(prices, selected_symbol), use_container_width=True)
 
-    st.markdown('<span id="sector-analyzer"></span><div class="cm-section-title"><span class="cm-title-icon">◫</span>Sector Analyzer</div>', unsafe_allow_html=True)
+    cm_html('<span id="sector-analyzer"></span><div class="cm-section-title"><span class="cm-title-icon">◫</span>Sector Analyzer</div>')
     sectors = pd.DataFrame(
         {"Sector": ["Technology", "Communication", "Consumer Cyclical", "Financials", "Healthcare", "Industrials"], "Score": [91, 84, 77, 69, 62, 58]}
     )
@@ -1009,7 +1010,7 @@ def render_secondary_tools(prices: pd.DataFrame, market_rows: pd.DataFrame, sele
     fig.update_yaxes(autorange="reversed", title="")
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown('<span id="earnings"></span><span id="insider-trading"></span><span id="upgrades"></span>', unsafe_allow_html=True)
+    cm_html('<span id="earnings"></span><span id="insider-trading"></span><span id="upgrades"></span>')
     render_screener(market_rows)
 
 
@@ -1028,14 +1029,12 @@ def main() -> None:
     render_market_today(latest)
     render_movers(market_rows)
 
-    st.markdown('<div class="cm-content-grid">', unsafe_allow_html=True)
     left, right = st.columns([1.45, 0.72], gap="medium")
     with left:
         render_news()
         render_ideas()
     with right:
         render_secondary_tools(prices, market_rows, selected_symbol)
-    st.markdown("</div>", unsafe_allow_html=True)
 
     source = "Yahoo Finance via yfinance" if yf is not None else "offline synthetic fallback"
     freshness = prices["Date"].max()
