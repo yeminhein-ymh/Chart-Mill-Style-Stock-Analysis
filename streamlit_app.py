@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+import html
 import textwrap
 from typing import Iterable
+from urllib.parse import quote
 
 import numpy as np
 import pandas as pd
@@ -26,10 +28,53 @@ st.set_page_config(
 INDEX_SYMBOLS = ("SPY", "QQQ", "IWM")
 WATCHLIST = ["SPY", "QQQ", "IWM", "NVDA", "AMZN", "MU", "PLTR", "GOOGL", "AMD", "AVGO", "TSLA", "TSM", "AAPL", "MSFT"]
 POPULAR = ["NVDA", "AMZN", "MU", "PLTR", "GOOGL", "AMD", "SPY", "AVGO", "QQQ", "GOOG", "TSLA", "TSM", "AAPL"]
+CHARTMILL_BASE_URL = "https://www.chartmill.com"
+NEWS_URL = f"{CHARTMILL_BASE_URL}/news"
+MARKET_URLS = {
+    "Top Gainers": f"{CHARTMILL_BASE_URL}/stock/market/top-gainers-and-losers/usa-nyse-nasdaq-amex",
+    "Top Losers": f"{CHARTMILL_BASE_URL}/stock/market/top-gainers-and-losers/usa-nyse-nasdaq-amex",
+    "New 52 Week High": f"{CHARTMILL_BASE_URL}/stock/market/new-52-week-high-and-lows/usa-nyse-nasdaq-amex",
+    "New 52 Week Low": f"{CHARTMILL_BASE_URL}/stock/market/new-52-week-high-and-lows/usa-nyse-nasdaq-amex",
+    "Gap Up Stocks": f"{CHARTMILL_BASE_URL}/stock/market/gap-up-and-down/usa-nyse-nasdaq-amex",
+    "Most Active": f"{CHARTMILL_BASE_URL}/stock/market/most-active-and-unusual-volume/usa-nyse-nasdaq-amex",
+}
+IDEA_URLS = {
+    "O'Neill CANSLIM High Growth screen": f"{CHARTMILL_BASE_URL}/trading-ideas/676-ONeill-CANSLIM-High-Growth-screen",
+    "Mark Minervini - Trend Template + FA Screen 6": f"{CHARTMILL_BASE_URL}/trading-ideas",
+    "High Growth Momentum + Trend Template": f"{CHARTMILL_BASE_URL}/trading-ideas",
+    "High Growth Momentum Breakout Setups": f"{CHARTMILL_BASE_URL}/trading-ideas",
+    "Martin Zweig: Growth at Reasonable Price": f"{CHARTMILL_BASE_URL}/trading-ideas",
+    "Strong Growth Stocks with good Technical Setup Ratings": f"{CHARTMILL_BASE_URL}/trading-ideas",
+}
 
 
 def cm_html(markup: str, container=st) -> None:
     container.html(textwrap.dedent(markup).strip())
+
+
+def stock_url(symbol: str) -> str:
+    return f"{CHARTMILL_BASE_URL}/stock/quote/{quote(str(symbol).strip())}/profile"
+
+
+def link(url: str, label: str, class_name: str = "", title: str | None = None) -> str:
+    class_attr = f' class="{class_name}"' if class_name else ""
+    title_attr = f' title="{html.escape(title)}"' if title else ""
+    return (
+        f'<a{class_attr} href="{html.escape(url)}" target="_blank" '
+        f'rel="noopener noreferrer"{title_attr}>{html.escape(label)}</a>'
+    )
+
+
+def link_mentions(meta: str) -> str:
+    if "Mentions:" not in meta:
+        return html.escape(meta)
+    prefix, mentions = meta.split("Mentions:", 1)
+    linked = []
+    for symbol in mentions.replace(",", " ").split():
+        clean = symbol.strip()
+        if clean:
+            linked.append(link(stock_url(clean), clean, title=f"Open {clean} on ChartMill"))
+    return f"{html.escape(prefix)}Mentions: {' '.join(linked)}"
 
 
 def inject_css() -> None:
@@ -212,11 +257,13 @@ def inject_css() -> None:
         }
 
         .cm-btn {
+            display: inline-block;
             background: #f7f8fa;
             border: 1px solid #ccd3dd;
             border-radius: 3px;
             padding: 5px 9px;
             color: #3d444c;
+            text-decoration: none;
         }
 
         .cm-market-strip {
@@ -281,7 +328,7 @@ def inject_css() -> None:
             text-decoration: none;
         }
 
-        .cm-popular span {
+        .cm-popular a {
             color: var(--cm-link);
             margin-right: 9px;
             text-decoration: underline;
@@ -321,9 +368,12 @@ def inject_css() -> None:
         }
 
         .cm-breadth-item {
+            display: block;
             padding: 12px 8px 11px;
             text-align: center;
             border-right: 1px solid var(--cm-border-soft);
+            color: inherit;
+            text-decoration: none;
         }
 
         .cm-breadth-item:last-child {
@@ -471,6 +521,7 @@ def inject_css() -> None:
         }
 
         .cm-news-title {
+            display: block;
             color: var(--cm-link);
             font-size: 18px;
             font-weight: 700;
@@ -502,6 +553,7 @@ def inject_css() -> None:
         }
 
         .cm-tab {
+            display: inline-block;
             padding: 8px 12px;
             border: 1px solid var(--cm-border);
             border-bottom: 0;
@@ -511,6 +563,7 @@ def inject_css() -> None:
             font-size: 13px;
             margin-right: 4px;
             border-radius: 3px 3px 0 0;
+            text-decoration: none;
         }
 
         .cm-tab.active {
@@ -532,6 +585,7 @@ def inject_css() -> None:
         }
 
         .cm-idea-art {
+            display: block;
             height: 82px;
             background:
                 linear-gradient(140deg, rgba(255,255,255,0.3), rgba(255,255,255,0) 45%),
@@ -553,6 +607,7 @@ def inject_css() -> None:
         }
 
         .cm-idea-title {
+            display: block;
             padding: 9px 10px 4px;
             min-height: 49px;
             color: var(--cm-link);
@@ -778,11 +833,13 @@ def pct_html(value: float) -> str:
 
 def market_table_html(title: str, data: pd.DataFrame) -> str:
     rows = []
+    market_url = MARKET_URLS.get(title, f"{CHARTMILL_BASE_URL}/stock/market")
     for _, row in data.head(7).iterrows():
+        symbol = str(row["Symbol"])
         rows.append(
             f"""
             <tr>
-                <td><span class="cm-symbol-link">{row['Symbol']}</span></td>
+                <td>{link(stock_url(symbol), symbol, "cm-symbol-link", f"Open {symbol} on ChartMill")}</td>
                 <td>{compact_volume(row['Volume'])}</td>
                 <td>{row['Price']:.4g}</td>
                 <td>{pct_html(row['% Chg'])}</td>
@@ -791,7 +848,10 @@ def market_table_html(title: str, data: pd.DataFrame) -> str:
         )
     return f"""
     <div class="cm-widget">
-        <div class="cm-widget-head"><a>{title}</a><span class="cm-full-list">Full List</span></div>
+        <div class="cm-widget-head">
+            {link(market_url, title)}
+            {link(market_url, "Full List", "cm-full-list", f"Open full {title} list")}
+        </div>
         <table class="cm-table">
             <thead><tr><th>Symbol</th><th>Volume</th><th>Price</th><th>% Chg</th></tr></thead>
             <tbody>{''.join(rows)}</tbody>
@@ -802,14 +862,14 @@ def market_table_html(title: str, data: pd.DataFrame) -> str:
 
 def render_topbar() -> None:
     cm_html(
-        """
+        f"""
         <span id="home"></span>
         <div class="cm-topbar">
             <div class="cm-search">Search stocks, screeners, news or market data</div>
             <div class="cm-top-actions">
-                <span class="cm-btn">Stock Screener</span>
-                <span class="cm-btn">Charts</span>
-                <span class="cm-btn">Alerts</span>
+                {link(f"{CHARTMILL_BASE_URL}/stock/stock-screener", "Stock Screener", "cm-btn")}
+                {link(f"{CHARTMILL_BASE_URL}/stock/stock-charts", "Charts", "cm-btn")}
+                {link(f"{CHARTMILL_BASE_URL}/stock/stock-screener", "Alerts", "cm-btn")}
             </div>
         </div>
         """
@@ -829,19 +889,19 @@ def render_market_strip(latest: pd.DataFrame) -> None:
         cards.append(
             f"""
             <div class="cm-index-card">
-                <div class="cm-index-symbol">{row['Symbol']}</div>
+                {link(stock_url(row['Symbol']), str(row['Symbol']), "cm-index-symbol", f"Open {row['Symbol']} on ChartMill")}
                 <div class="cm-index-price">{price:.2f}&nbsp;&nbsp; <span class="{cls}">{change:+.2f} ({pct:+.2f}%)</span></div>
                 <div class="cm-after">After market: {price + after_change:.2f}&nbsp; <span class="{cls}">{after_change:+.2f} ({after_pct:+.2f}%)</span></div>
             </div>
             """
         )
-    popular_links = "".join(f"<span>{symbol}</span>" for symbol in POPULAR)
+    popular_links = "".join(link(stock_url(symbol), symbol, title=f"Open {symbol} on ChartMill") for symbol in POPULAR)
     cm_html(
         f"""
         <div class="cm-market-strip">
             <div class="cm-index-grid">{''.join(cards)}</div>
             <div class="cm-strip-bottom">
-                <a class="cm-open-screener" href="#stock-screener">Open Stock Screener</a>
+                {link(f"{CHARTMILL_BASE_URL}/stock/stock-screener", "Open Stock Screener", "cm-open-screener")}
                 <div class="cm-popular"><strong>Popular:</strong> {popular_links}</div>
             </div>
         </div>
@@ -861,10 +921,10 @@ def render_market_today(latest: pd.DataFrame) -> None:
     ]
     items = "".join(
         f"""
-        <div class="cm-breadth-item">
+        <a class="cm-breadth-item" href="{MARKET_URLS['Top Gainers']}" target="_blank" rel="noopener noreferrer" title="Open market monitor">
             <div class="cm-breadth-label">{label}</div>
             <div class="cm-breadth-value">{value:g}</div>
-        </div>
+        </a>
         """
         for label, value in values
     )
@@ -888,7 +948,7 @@ def render_movers(market_rows: pd.DataFrame) -> None:
         market_table_html("Most Active", active),
     ]
     cm_html(f'<div class="cm-grid-3">{"".join(widgets)}</div>')
-    cm_html('<div class="cm-linkbar"><a class="cm-blue-link" href="#market-monitor">TO MARKET MONITOR</a></div>')
+    cm_html(f'<div class="cm-linkbar">{link(f"{CHARTMILL_BASE_URL}/stock/market", "TO MARKET MONITOR", "cm-blue-link")}</div>')
 
 
 def chart_for_symbol(prices: pd.DataFrame, symbol: str) -> go.Figure:
@@ -929,16 +989,21 @@ def render_news() -> None:
     ]
     for meta, title in news_items:
         cm_html(news_card(meta, title))
-    cm_html('<div class="cm-linkbar"><a class="cm-blue-link" href="#news">ALL NEWS</a></div>')
+    cm_html(f'<div class="cm-linkbar">{link(NEWS_URL, "ALL NEWS", "cm-blue-link")}</div>')
 
 
 def news_card(meta: str, title: str) -> str:
+    target = NEWS_URL
+    for token in ("FUL", "RFIL", "CVGW", "LOOP", "SPY", "QQQ", "IWM", "F"):
+        if token in meta:
+            target = f"{stock_url(token)}/news"
+            break
     return f"""
     <div class="cm-news-card">
         <div class="cm-news-img"></div>
         <div class="cm-news-body">
-            <div class="cm-meta">{meta}</div>
-            <div class="cm-news-title">{title}</div>
+            <div class="cm-meta">{link_mentions(meta)}</div>
+            {link(target, title, "cm-news-title", "Open related news")}
         </div>
     </div>
     """
@@ -953,16 +1018,16 @@ def render_ideas() -> None:
         "Martin Zweig: Growth at Reasonable Price",
         "Strong Growth Stocks with good Technical Setup Ratings",
     ]
-    cards = "".join(
-        f"""
-        <div class="cm-idea-card">
-            <div class="cm-idea-art"></div>
-            <div class="cm-idea-title">{title}</div>
-            <span class="cm-more">MORE INFO</span>
-        </div>
+    cards = ""
+    for title in ideas:
+        target = IDEA_URLS.get(title, f"{CHARTMILL_BASE_URL}/trading-ideas")
+        cards += f"""
+            <div class="cm-idea-card">
+                <a class="cm-idea-art" href="{html.escape(target)}" target="_blank" rel="noopener noreferrer" title="{html.escape(title)}"></a>
+                {link(target, title, "cm-idea-title", "Open trading idea")}
+                {link(target, "MORE INFO", "cm-more", "Open trading idea details")}
+            </div>
         """
-        for title in ideas
-    )
     cm_html(
         f"""
         <span id="trading-ideas"></span>
@@ -973,12 +1038,12 @@ def render_ideas() -> None:
                 swing trading based on technical analysis, or long-term Growth, Value and Quality investments.
             </div>
             <div class="cm-tabs">
-                <span class="cm-tab active">Technical and Fundamental</span>
-                <span class="cm-tab">Pure Technical</span>
-                <span class="cm-tab">Pure Fundamental</span>
+                {link(f"{CHARTMILL_BASE_URL}/trading-ideas?tab=technical-and-fundamental", "Technical and Fundamental", "cm-tab active")}
+                {link(f"{CHARTMILL_BASE_URL}/trading-ideas?tab=pure-technical", "Pure Technical", "cm-tab")}
+                {link(f"{CHARTMILL_BASE_URL}/trading-ideas?tab=pure-fundamental", "Pure Fundamental", "cm-tab")}
             </div>
             <div class="cm-idea-grid">{cards}</div>
-            <div class="cm-linkbar" style="margin-bottom:0;"><a class="cm-blue-link">Explore Trading Ideas</a></div>
+            <div class="cm-linkbar" style="margin-bottom:0;">{link(f"{CHARTMILL_BASE_URL}/trading-ideas", "Explore Trading Ideas", "cm-blue-link")}</div>
         </div>
         """
     )
@@ -988,11 +1053,20 @@ def render_screener(market_rows: pd.DataFrame) -> None:
     cm_html('<span id="stock-screener"></span><div class="cm-section-title"><span class="cm-title-icon">⌕</span>Stock Screener</div>')
     min_change, max_change = st.slider("% change range", -75.0, 450.0, (-10.0, 100.0), 5.0)
     screened = market_rows[(market_rows["% Chg"] >= min_change) & (market_rows["% Chg"] <= max_change)].sort_values("% Chg", ascending=False)
+    screened = screened[["Symbol", "Volume", "Price", "% Chg"]].copy()
+    screened["ChartMill Link"] = screened["Symbol"].map(stock_url)
     st.dataframe(
-        screened[["Symbol", "Volume", "Price", "% Chg"]].style.format({"Volume": "{:,.0f}", "Price": "{:.4g}", "% Chg": "{:+.2f}%"}),
+        screened.style.format({"Volume": "{:,.0f}", "Price": "{:.4g}", "% Chg": "{:+.2f}%"}),
         use_container_width=True,
         hide_index=True,
         height=285,
+        column_config={
+            "ChartMill Link": st.column_config.LinkColumn(
+                "ChartMill Link",
+                display_text="Open",
+                help="Open this ticker on ChartMill",
+            )
+        },
     )
 
 
